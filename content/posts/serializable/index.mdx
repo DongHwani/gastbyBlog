@@ -1,0 +1,348 @@
+---
+title: 객체직렬화
+date: 2019-04-24
+description: Java에서의 객체 직렬화에 대해 정리한 글
+tags:
+  - Java
+---  
+
+### 1. 직렬화 개념
+
+  Serializable : 객체를 바이트 스트림으로 인코딩 하는 것  
+  Desrializable : 바이트 스트림 인코딩하여 객체로 복원 
+
+Serializable -> ByteStream -> VM간 전송/File 저장/ 네트워크 전송 등 -> ByteStream -> Desirializable
+
+
+### 2. 왜 직렬화를 사용할까 ?
+ 기본적으로 Primitive 데이터를 DB 혹은 File에 저장하거나 네트워크 전송이 가능하다. 
+ 반면에, Refference타입을 네트워크로 전송하거나 파일 혹은 DB에 저장하는 것은 불가능하다. 
+
+```java
+String hello = "안녕" 
+```
+
+위의 String 타입의 객체를 선언하면 메모리에서 물리적인 주소값을 참조하는 형식인  `0x001203` 이러한 형태로 저장하게 된다.  
+
+결론적으로 이러한 Reference값들을 파일 저장, 네트워크 전송, VM 간 전송, DB 저장의 목적으로 파싱 할 수 있는 
+데이터를 만들기 위하여 직렬화를 사용함에 목적을 둔다.
+
+
+### 3. 언제 직렬화를 사용할까?
+ 직렬화는 언어(JAVA) 혹은 플랫폼(JVM)에 종속적이여서 사용목적이 제한적일 수 밖에 없다. 
+
+ - HttpServlet : 세션 상태를 캐시 하기 위해서 구현
+ - Component : GUI를 전송, 보관, 복원
+ - Throwable : RMI시 발생하는 예외를 서버에서 클라이언트로 전달
+ - 세션 클러스터링
+ 
+### 4. 직렬화, 역직렬화 간단한 사용법
+
+ **01) implements Serializable 선언**  
+ ```java
+
+ public class Member implements Serializable {
+  
+    private String name;
+    private String email;
+    private int age;
+
+    
+    public Member(String name, String email, int age) {
+        this.name = name;
+        this.email = email;
+        this.age = age;
+    }
+    //.......생략
+ }
+ ```
+
+ Serializable은 마커 인터페이스로 클래스에 `implements Serializable`을 명시만 해준다면 
+ 해당 객체는 직렬화 대상이 되어, 컴파일 단계에서 직렬화 과정이 수행된다. 만약 Serializable 인터페이스를 구현하지 않고 
+ 해당 클래스를 직렬화를 수행하면 컴파일 단계에서 `java.io.NotSerializableException`이 발생한다.
+
+
+**02) 객체 직렬화 수행** 
+```java
+
+public static void main(String[] args) throws Exception {
+		 
+  File file = new File("D:\\test.txt");
+
+  Member member = new Member("김동환", "abc@study.com", 31);
+		 
+  ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file));
+		 
+  oos.writeObject(member);
+  oos.close();
+}
+
+```
+ writeObject 메소드는 non-transient, non-static 필드를 대상으로 Member 클래스의 member인스턴스 직렬화를 수행한다.    
+위의 코드를 실행하면 D드라이브에 있는 test.txt파일에 아래의 결과가 나온다.
+![직렬화수행](../serializable/serializable01.png)
+
+
+**3) 역직렬화 과정**   
+ 메모장에 저장된 직렬화 데이터는 사람이 알아 볼 수 없는 Byte형태로 저장이 되어있다. Byte형태의
+ 데이터를 다시 `역직렬화`하여 인스턴스화 과정을 살펴보겠다.
+
+ ```java
+public static void main(String[] args) throws Exception {
+	
+    File file = new File("D:\\test.txt");
+    
+    ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file));
+    Member member2 = (Member)ois.readObject();
+    ois.close();
+		 
+    System.out.println(member2);
+}
+ ``` 
+ `test.txt`에 담긴 객체 정보를 역직렬 화하는 과정이다. 
+ 당연하게도, 다른 VM에 전송 시 Member클래스는 import 되어있어야 역직렬화가 가능하다. 
+ readObject 메서드를 사용하여 파일에 있는 객체 정보를 member2로 인스턴스화 하였다.
+ 
+- 역직렬화한 결과값
+ ```
+ Member [name=김동환, email=abc@study.com, age=31]
+ ```
+
+제대로 된 값들이 들어 있는 걸 확인할 수 있다.여기까지 얼핏보면, 직렬화와 역직렬화 과정이
+굉장히 간단해 보이기도 한다. 
+
+직렬화와 역직렬화의 과정 자체는 간단하지만 `관리` 관점에서는 제약사항에 따른 고려해야할 부분들이 많다.
+`Member class`라는 물리적인 구조가 두 VM간에 존재한다는 것은, 이 class 구조가 나중에 다르게 발전함에 따라  
+서로간의 규약을 지켜야 하는 무언가가 있어야 된다는 것을 암시한다. 
+
+**4) 직렬 버전 UID(serial version UID)**    
+ UID는 직렬화 대상 클래스의 고유 식별자 역할을 한다. 모든 직렬화 가능 클래스에는 UID가 붙는다.
+1번 직렬화 과정 예제를 보면 Member 클래스에 UID 필드를 생성하지 않았다. 
+UID를 명시적으로 선언하지 않으면 시스템이 복잡한 과정을 거쳐 기본적으로 UID를 생성한다. 
+
+ 기존 Member 클래스에 필드를 하나 추가해보겠다.
+ ```java
+ public class Member implements Serializable {
+    private String name;
+    private String email;
+    private int age;
+    private double iq; //추가된 필드
+
+    
+  //...생략
+
+}
+ ```
+
+필드 하나가 추가된 Member 클래스를 직렬화과정을 수행하면 `InvalidClassException` 예외가 발생한다.
+```
+Exception in thread "main" java.io.InvalidClassException: SerializableTest.Member; local class incompatible: stream classdesc serialVersionUID = -6595993439742869931, local class serialVersionUID = -6816804225860732478
+	at java.io.ObjectStreamClass.initNonProxy(Unknown Source)
+	at java.io.ObjectInputStream.readNonProxyDesc(Unknown Source)
+	at java.io.ObjectInputStream.readClassDesc(Unknown Source)
+	at java.io.ObjectInputStream.readOrdinaryObject(Unknown Source)
+	at java.io.ObjectInputStream.readObject0(Unknown Source)
+	at java.io.ObjectInputStream.readObject(Unknown Source)
+	at SerializableTest.Main.main(Main.java:30)
+```
+
+로그를 확인해보면 stream classdesc serialversionUID가 자동 생성되었던걸 확인할 수 있다.
+그런데 이번에는 필드 값이 추가가 되어 local class UID도 자동 생성되면서, UID 값이 바뀌어 stream UID와 local UID가
+일치하지 않아 예외가 발생한다. 
+이렇게 자동 생성된 UID의 문제는 직렬화 대상 클래스 중 필드 값이 하나라도 변경이 될 경우, 
+자동 생성되는 직렬 버전 UID 값이 바뀌게 되어 버전 관리가 쉽지 않게된다. 
+그래서 직렬화 대상 클래스에는 UID값을 명시하는 것이 직렬화 클래스 관리에 훨씬 효율적이다.
+
+
+### 5. 직렬화 유의사항
+
+**1) 필드 Type 체크**  
+
+```java
+public class Member implements Serializable {
+	
+    private static final long serialVersionUID = -6816804225860732478L;
+    private String name;
+    private String email;
+    private int age;
+    private int iq; //double -> int로 변경
+   
+   //생략
+}
+```
+기존 double type의 iq 필드를 직렬화하여 파일에 저장하였다. 그 후에 클래스 규칙이 바뀌어 
+double iq를 int iq로 바꾼 후에 역직렬화를 시도해보면 아래의 예외가 발생한다.
+
+```
+Exception in thread "main" java.io.InvalidClassException: SerializableTest.Member; incompatible types for field iq
+	at java.io.ObjectStreamClass.matchFields(Unknown Source)
+	at java.io.ObjectStreamClass.getReflector(Unknown Source)
+	at java.io.ObjectStreamClass.initNonProxy(Unknown Source)
+	at java.io.ObjectInputStream.readNonProxyDesc(Unknown Source)
+	at java.io.ObjectInputStream.readClassDesc(Unknown Source)
+	at java.io.ObjectInputStream.readOrdinaryObject(Unknown Source)
+	at java.io.ObjectInputStream.readObject0(Unknown Source)
+	at java.io.ObjectInputStream.readObject(Unknown Source)
+	at SerializableMainMethod.MemberMainMethod.main(MemberMainMethod.java:26)
+```
+ 필드 타입이 변경이 될 경우, Class의 물리적 구조가 맞지 않아 타입의 불일치로 예외가 발생한걸 알 수 있다.
+위의 상황을 미루어보아, 자주 바뀌는 환경 속에서 직렬화를 쓰면 관리하기가 까다로울 것 같다. 
+
+** 2) 필드 추가 ** 
+
+직렬화 클래스에 필드가 추후에 추가가 될 경우, Type에 따른 default 값이 할당된다. Refference 타입의 String의
+경우 Null값이 할당되기 때문에 도메인 로직을 수행할 때 유의해야한다. 
+
+```java
+public class Member implements Serializable {
+    private static final long serialVersionUID = -6816804225860732478L;
+    private String name;
+    private String email;
+    private int age;
+    private double iq; 
+    private String address; //추가된 필드
+    //생략...
+}
+```  
+---
+
+```
+Member [name=김동환, email=abc@study.com, age=31, iq=100.0, address=null]
+```
+
+**3) 객체 그래프 관계** 
+
+ 클래스 데이터 타입을 참조하고 있는 객체를 직렬화할 경우 `transient` 키워들 사용하여 제외하거나 
+ 혹은 참조하고 있는 클래스 데이터 타입도 `Serializable` 인터페이스를 구현해줘야 한다.
+
+ ```java
+ public class Player implements Serializable{
+	private static final long serialVersionUID = 4906028383324707764L;
+	private String name;
+	private String position;
+	private Team team; 
+}
+
+public class Team {
+	private String teamId;
+	private String teamName;
+}
+ ```
+
+ ```java
+public static void main(String[] args) throws Exception{
+		
+    File file = new File("D:\\team.txt");
+    Team team = new Team("1", "토트넘");
+    Player player = new Player("손흥민","공격수", team);
+	
+    System.out.println(player);
+    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file));
+	 
+    oos.writeObject(player);
+    oos.close();
+}
+ ```
+ ![객체그래프 직렬화](../serializable/serializable02.png)
+ 
+위의 예외는 Team 클래스에 Serializable 인터페이스를 구현하지 않아 예외가 발생하였다.
+
+**4) 버그나 보안에 취약**  
+
+`readObject` 메서드는 바이트 스트림을 인자로 받아 인스턴스를 생성하는 방식이다.   
+(일반적인 `new` 키워드를 사용하는 방식이 아니다)  
+그래서 클래스의 생성자가 private이건 protected건 상관없이 직렬화 클래스는 
+readObject 메소드를 사용하는 순간 public 생성 방식이 되어버린다.  
+결국, 이러한 특이한(?) 객체 생성 방식은 생성자에 유효성 검사 로직이 들어가더라도
+수행하지 못하여 버그나 보안에 취약한 구조를 갖게 된다.
+
+(아래의 예제부터는 Effective Java2 책 내용을 기반으로 하여 정리하였다)
+```java
+public final class Period implements Serializable{
+ 
+    private final Date start;
+    private final Date end;
+	
+    public Period(Date start, Date end) {
+		this.start = new Date(start.getTime());
+		this.end = new Date(end.getTime());
+		if (this.start.compareTo(this.end) > 0)
+			throw new IllegalArgumentException(start + " after " + end);
+	}
+
+    public Date start() {return new Date(start.getTime());}
+    public Date end() {return new Date(end.getTime());}
+    public String toString() {return start + " - " + end;}
+    
+    // 생략
+}
+```
+
+생성자에 시작일과 종료일을 비교하여 올바른 값을 안넣었을 경우 예외를 발생하는 유효성검사를
+하는 부분이 있다. 일반적인 `new` 키워드를 사용할 경우, 위의 유효성 검사를 수행하지만 역직렬화를
+할 경우에는 위의 유효성 검사를 수행하지 않는 문제가 발생한다.
+
+`readObject`가 바이트 스트림을 인자로 받아서 생성하기 때문에 클래스의 
+불변식을 위반하는 객체를 만들 수 있게 된다.
+
+이러한 문제를 해결하기 위해서는 `defaultReadObject` 메서드를 호출하는 
+readObject메소드를 Period 클래스에 구현해서 역직렬화된 객체의 유효성을 검사하도록 해야한다.
+
+기본적인 serializable 구현 이외에 추가적인 옵션사항들을 넣으려면 `readObject`나 `writeObject`를 
+직렬화 가능 클래스 내부에 메서드를 정의하면 사용자 정의 직렬화가 가능하다.
+
+
+```java
+public final class Period implements Serializable{
+
+	private final Date start;
+	private final Date end;
+
+	public Period(Date start, Date end) {
+		this.start = new Date(start.getTime());
+		this.end = new Date(end.getTime());
+		if (this.start.compareTo(this.end) > 0)
+			throw new IllegalArgumentException(start + " after " + end);
+	}
+
+	public Date start() {return new Date(start.getTime());}
+
+	public Date end() {return new Date(end.getTime());}
+
+	public String toString() {return start + " - " + end;}
+	
+  //유효성을 검사하는 readObject메서드
+	private void readObject(ObjectInputStream s)throws Exception{
+		
+		System.out.println("readObject Come in");
+		
+        s.defaultReadObject();
+  	
+		if(start.compareTo(end)>0)
+			throw new InvalidObjectException(start + " after "+ end);
+	}
+}
+```
+`defaultReadObject`는 현재 스트림에 있는 클래스의 `non-static`, `non-filed`를 읽어들인다. 이렇게 먼저
+읽어들인 필드를 바로 아래의 `if`문에서 읽어들여 유효성 검사를 하여 좀 더 안정적인 직렬화 가능 클래스를 설계할 수 있다.
+
+---
+### 5. 정리
+> 클래스를 배포하고 나면 클래스 구현을 유연하게 바꾸기가 어렵다
+
+위의 문구는 이펙티브 자바에 나오는 내용이다. 이번에 직렬화에 대해 조사하고 정리하면서 위의 대목이 가장
+와닿은 내용이었다. 
+
+직렬화 구현 자체는 얼핏보면 쉬어보이지만, 유지보수 관점에서 바라볼 때 애초에 직렬화 설계를 잘 해놔야
+문제 발생소지를 줄일 수 있을 거라는 생각이 든다. 
+
+---
+
+
+### [Refference]
+- Effective Java 2판
+- http://woowabros.github.io/experience/2017/10/17/java-serialize.html
+- https://okky.kr/article/224715
+- https://devbox.tistory.com/entry/Java-%EC%A7%81%EB%A0%AC%ED%99%94 
+- https://brunch.co.kr/@oemilk/179
+- https://aroundck.tistory.com/3114
