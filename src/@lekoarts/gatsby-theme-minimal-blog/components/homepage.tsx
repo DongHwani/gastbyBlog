@@ -9,8 +9,6 @@ import useMinimalBlogConfig from "../hooks/use-minimal-blog-config"
 import replaceSlashes from "../utils/replaceSlashes"
 // @ts-ignore
 import Hero from "../texts/hero"
-// @ts-ignore
-import Bottom from "../texts/bottom"
 
 type PostsProps = {
   posts: {
@@ -33,16 +31,8 @@ const Homepage = ({ posts }: PostsProps) => {
 
   return (
     <Layout>
-      <section sx={{ mb: [5, 6, 7], p: { fontSize: [1, 2, 3], mt: 2 } }}>
-        <Hero />
-      </section>
-      <Title text="Latest Posts">
-        <Link to={replaceSlashes(`/${basePath}/${blogPath}`)}>Read all posts</Link>
-      </Title>
       <Listing posts={posts} showTags={false} />
-      <List>
-        <Bottom />
-      </List>
+   
     </Layout>
   )
 }
