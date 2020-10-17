@@ -6,7 +6,7 @@ tags:
 ---  
 
 ##### 1. EnumMap이란 ? 
- EnumMap은 Enum을 key값으로 사용하는 Map의 자료구조이다. 
+ EnumMap은 Enum을 key값으로 사용하는 Map의 자료구조로 설계되었다. 
 
 ##### 2. EnumMap과 HashMap 비교
 |EnumMap|HashMap|
@@ -16,3 +16,50 @@ tags:
 |Enum의 선언적 순서에 따라(ordinal) 순서를 보장 | 순서를 보장하지 않음| 
 
 ##### 3. EnumMap 사용
+
+
+~~~Java
+public class EnumTestMap {
+
+    public static void main(String[] args) {
+        //EnumMap
+        Map<Sports, String> enumMap = new EnumMap<>(Sports.class);
+        enumMap.put(Sports.BASEBALL, "류현진");
+        enumMap.put(Sports.BASKETBALL, "서장훈");
+        enumMap.put(Sports.SOCCER, "손흥민");
+        enumMap.put(Sports.SWIM, "박태환");
+
+        //HashMap
+        Map<Sports, String> hashMap = new HashMap<>();
+        hashMap.put(Sports.BASEBALL, "류현진");
+        hashMap.put(Sports.BASKETBALL, "서장훈");
+        hashMap.put(Sports.SOCCER, "손흥민");
+        hashMap.put(Sports.SWIM, "박태환");
+    
+        
+        enumMap.keySet().stream().collect(Collectors.toList()).forEach( i -> System.out.println(i));
+        
+        hashMap.keySet().stream().collect(Collectors.toList()).forEach( i -> System.out.println(i));
+
+    }
+}
+
+public enum Sports {
+
+    SOCCER,
+    BASEBALL,
+    BASKETBALL,
+    SWIM
+
+}
+
+~~~
+EnumMap과 HashMap을 비교하기 위하여 위와 같이 예제를 사용하였다. 위의 내용을 결과를 확인해보면 EnumMap은 Enum클래스에 
+선언된 순서를 보장하여 SOCCER -> BASEBALL -> BASKETBALL -> SWIM 결과로 출력되고, HashMap은 순서가 보장되지 않아 Enum순서에 상관없이
+해싱함수 결과값에 따라 순서가 랜덤으로 나오게 된다. 
+
+~~~Java
+
+
+~~~
+
