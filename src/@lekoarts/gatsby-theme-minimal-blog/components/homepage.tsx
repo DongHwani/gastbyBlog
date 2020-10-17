@@ -9,6 +9,8 @@ import useMinimalBlogConfig from "../hooks/use-minimal-blog-config"
 import replaceSlashes from "../utils/replaceSlashes"
 // @ts-ignore
 import Hero from "../texts/hero"
+// @ts-ignore
+import Bottom from "../texts/bottom"
 
 type PostsProps = {
   posts: {
@@ -31,9 +33,12 @@ const Homepage = ({ posts }: PostsProps) => {
 
   return (
     <Layout>
-      <Listing posts={posts} showTags={false} />
-   
-    </Layout>
+    <Title text="최근 게시물">
+      <Link to={replaceSlashes(`/${basePath}/${blogPath}`)}>Read all posts</Link>
+    </Title>
+    <Listing posts={posts} showTags={true} />
+ 
+  </Layout>
   )
 }
 

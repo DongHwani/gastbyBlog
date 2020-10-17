@@ -81,7 +81,7 @@ const theme = merge(tailwind, {
     h4: {
       variant: `text.heading`,
       fontSize: [2, 3, 4],
-      mt: 3,
+      mt: 4,
     },
     h5: {
       variant: `text.heading`,
