@@ -12,14 +12,14 @@ tags:
 ##### 2. EnumMap과 HashMap 비교
 |EnumMap|HashMap|
 |-------|-------|
-|Enum Type만 Key로 사용| 모든 Object를 Key로 사용|
+|Enum Type만 Key로 사용되며, enum type key에 최적화되어 있음| 모든 Object를 Key로 사용|
 |내부 자료구조는 배열로 구성 | 내부자료구조는 HashTable로 구성|
-|Enum의 선언적 순서에 따라(ordinal) 순서를 보장 | 순서를 보장하지 않음| 
+|Enum의 선언적 순서에 따라(ordinal) 순서를 보장 | 순서를 보장하지 않음|
+|(ordinal) 순서를 보장하여 배열을 유지함으로, 해시 충돌 가능성이 없음 |hascode를 사용하여 충돌 가능성이 있음|
 
 ##### 3. EnumMap 사용
-
-
-~~~Java
+ 
+~~~java
 public class EnumTestMap {
 
     public static void main(String[] args) {
@@ -44,7 +44,6 @@ public class EnumTestMap {
 
     }
 }
-
 public enum Sports {
 
     SOCCER,
@@ -53,14 +52,43 @@ public enum Sports {
     SWIM
 
 }
-
 ~~~
+
 EnumMap과 HashMap을 비교하기 위하여 위와 같이 예제를 사용하였다. 위의 내용을 결과를 확인해보면 EnumMap은 Enum클래스에 
 선언된 순서를 보장하여 SOCCER -> BASEBALL -> BASKETBALL -> SWIM 결과로 출력되고, HashMap은 순서가 보장되지 않아 Enum순서에 상관없이
 해싱함수 결과값에 따라 순서가 랜덤으로 나오게 된다. 
 
-~~~Java
+~~~java
 
+// jdk 1.8 기준, EnumMap put 메서드
+public class EnumMap<K extends Enum<K>, V> extends AbstractMap<K, V>
+    implements java.io.Serializable, Cloneable {
+  
+   //생략...
 
+  public V put(K key, V value) {
+        typeCheck(key);
+
+        int index = key.ordinal();
+        Object oldValue = vals[index];
+        vals[index] = maskNull(value);
+        if (oldValue == null)
+            size++;
+        return unmaskNull(oldValue);
+    }
+}
 ~~~
+ordinal() 메서드를 사용함으로써 순서를 보장하는 것을 알 수 있다. 
+
+EnumMap은 HashMap api와 거의 동일하나 key가 Enum으로만 한정되어 있기에 삽입, 조회, 삭제 과정에서 
+내부 구현만 다를 뿐이다.
+
+##### 4. 언제 사용하는게 좋을까? #####
+ 너무나 당연하게도 Enum으로 key가 한정될 때 HashMap보다 EnumMap을 사용하는 것을 고려해볼 필요가 있다. 해싱과정이 이미 정해진 enum으로 하기에 
+ 최적화된 성능이 보장되고, 해싱충돌 염려가 없기 때문에 더 좋은 성능을 보장한다.
+
+---
+[Reference]
+- https://walkingtechie.blogspot.com/2017/03/difference-between-enummap-and-hashmap.html
+- [Baeldung](https://www.baeldung.com/java-enum-map)
 
