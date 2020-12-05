@@ -1,0 +1,220 @@
+---
+title: Getter, Setter는 지양하자
+date: 2020-12-01
+tags:
+  - CleanCode
+---  
+
+### Setter를 쓰지말자
+처음 프로그래밍을 배웠을 때는 객체의 속성을 바꾸기 위한 수단으로 
+setter를 기본적으로 사용하곤 하였다. 
+이러한 setter 메서드는 몇 가지 문제와 단점을 가지고 있다.
+
+##### 1. set이라는 작명은 단일책임원칙에 어긋난다  
+
+여러가지 목적에 의해 객체의 상태를 바꾸는 일이 생긴다. set이라는 작명을 사용할 경우
+이런 여러가지 목적에 의해 상태를 바꾸는 행위를 set메서드 하나로 퉁(?)치게 되버린다. 그래서 그 행위가
+정확히 무엇을 의미하는지 알 수가 없다.
+
+~~~java
+public class User {
+  private String address;
+  //생략...
+
+  public void setAddress(String address){
+    this.address = address;
+  }
+}
+
+public class UserService {
+  //회원 주소지를 변경할 때
+  public void updateUser(String userId, String newAddress){
+    User user = dao.findById(userId);
+    user.setAddress("신 주소지");
+  }
+  //회원 주소지를 삭제할 때
+  public void deleteAddress(String userId) {
+    User user = dao.findById(userId);
+    user.setAddress("");
+  }
+}
+~~~
+위의 예제는 간단한 요구사항이기에 서비스 레이어에 있는 메서드를 통해서 
+대략 set이 의미하는 바를 유추할 수 있지만, 더욱 복잡한 요구사항이 생길 수록
+서비스 레이어의 메서드를 통해서 set이 의미하는 바를 유추하기가 어렵다. 
+
+
+##### 2. 해당 객체를 사용하는 곳에서의 코드가 지저분해진다.
+
+~~~java 
+public class User {
+  
+  private String userId;
+  private String userName;
+  private String email;
+  private String address;
+
+  //Setter 메서드 생략..
+}
+
+public class UserService {
+  
+  public void updateUser(User updateUser) {
+    
+    User user = dao.findById(updateUser.getUserId());
+    user.setAddress(updateUser.getUserAddress());
+    user.setUserId(updateUser.getUserName());
+    user.setUserId(updateUser.getEmail());
+
+  }
+}
+~~~
+
+수정이 필요한 모든 필드들에 대해서 set메서드를 사용해야한다. 만약 유저 정보를
+업데이트하는 곳이 여러곳일 경우, User 클래스에 새로운 필드가 추가가 되었을 때
+사용하는 모든 곳에 추가가 되어야한다. 
+
+위와 같은 Setter 메서드를 사용하는 대신 `의미가 명확한 메서드`의 사용만으로 
+더 좋은 코드의 구조를 가질 수 있다. 
+
+~~~java
+public class User {
+  
+  privaet String userId;
+  private String userName;
+  private String email;
+  private String address;
+
+  public void updateInformation(User updateUser){
+    this.userName = updateUser.getUserName();
+    this.email = updateUser.getEmail();
+    this.address = updateUser.getAddress();
+  }
+
+  public void deleteAddress(){
+    this.address = "";
+  }
+
+  //Getter 메서드 생략
+}
+
+public class UserService {
+
+  public void update(User updateUser) {
+    User user = dao.findById(updateUser.getUserId());
+    user.updateInformation(updateUser);
+  }
+  public void deleteAddress(String userId) {
+    User user = dao.findById(userId);
+    user.deleteAddress();
+  }
+}
+~~~
+
+유저의 정보를 업데이트하는 곳에서는 `update`라는 정확한 메서드명을 사용하고 파라미터 값으로 업데이트할 정보가 
+담긴 User 객체를 받으면 update라는 기능이 User 클래스 내부에 집중할 수 있는 장점을 가지게 된다. 
+
+---
+
+### 무분별한 Getter 사용을 지양하자
+
+처음으로 어디선가 Getter 사용을 지양하는게 좋다라는 것을 봤을 때는 그 의미가 무엇을 말하는 것인지 이해하기 어려웠다.
+이번에 넥스트 스텝의 클린코드 강의 미션을 진행하면서 언제 사용하면 안좋은지에 대해 배울 수 있게 되었다. 
+
+무분별한 Getter를 사용하면서 리뷰어분들이 피드백 남겨주신 대부분의 내용은 `객체에 값을 가져오지말고 메세지를 던져라`
+혹은 `객체에 묻지말고 객체 스스로가 행동하게 하라` 라는 코멘트였다. 
+
+위의 코멘트가 달린 나의 코드는 아래의와 같은 문제점들을 유발하고 있었다.
+
+##### 1. Getter를 사용하는 곳에서 Getter를 제공하는 클래스의 도메인 기능을 처리하려고 한다
+##### 2. 객체의 상태를 바꾸는 행위가 외부에서 결정된다. 
+
+1번과 2번은 서로 연관관계가 있다. 1번에서 Getter를 사용하는 곳(외부)에서 도메인 기능을 처리하려고 하면
+객체의 상태를 바꾸는 행위가 사용하는 곳에서 결정하는 경우가 생긴다. 
+
+이렇게 변경이 외부에서 할 경우에는 도메인 기능이 깨질 가능성이 높아진다. 특히나 여러군데에서 사용할 경우에는
+더더욱이 그 가능성이 높아지고, 여러군데에서 중복된 코드들이 발생할 수 있다. 
+
+한 예제로, 여러개의 로또중에 보너스볼 일치여부에 따라 Lotto 클래스 내부에있는 isBonusball 상태를 바꾸는 
+예제를 살펴보자.
+
+~~~java 
+public class Game {
+
+    public void matchBonusball(Lottos lottos, int bonuslBall) {
+        lottos.getLottos()
+                .stream()
+                .filter(lotto -> lotto.getNumbers().contains(bonuslBall))
+                .forEach(lotto -> lotto.matchBonusball(true));
+    }
+}
+
+public class Lottos {
+
+    private List<Lotto> lottos;
+
+    public List<Lotto> getLottos(){
+        return lottos;
+    }
+}
+
+public class Lotto {
+
+    private List<Integer> numbers;
+    private boolean isBonusball;
+
+    public List<Integer> getNumbers(){
+        return numbers;
+    }
+
+    public void matchBonusball(boolean isMatch){
+        isBonusball = isMatch;
+    }
+}
+~~~
+
+Game 클래스에서 Lottos 클래스 내부의 Lotto 인스턴스 필드에 접근하여 로또번호를 가져온 뒤에 보너스볼과 일치하면
+Lotto 클래스 내부에 isBonusball 필드값을 true로 변경해준다. 이렇게 Getter 메서드를 통해 외부에서 데이터를 가지고 와서 처리하게 되면
+다른 곳에서 해당 기능을 동일하게 사용할 경우에도 중복된 코드가 발생된다. 또한, 어디서 데이터 상태를 바꾸었는지에 
+대해 추적 및 분석 하기가 어렵게 된다.
+
+~~~java 
+public class Game {
+
+    public void matchBonusball(Lottos lottos, int bonuslBall) {
+        lottos.matchBonusball(bonuslBall);
+    }
+}
+public class Lottos {
+
+    private List<Lotto> lottos;
+
+    public void matchBonusball(int bonuslBall){
+      lottos.stream()
+            .forEach(lotto -> lotto.matchBonusball(bonuslBall));
+    }
+}
+public class Lotto {
+
+    private List<Integer> numbers;
+    private boolean isBonusball;
+
+    public void matchBonusball(int bonuslBall){
+        if(numbers.contains(bonuslBall)){
+            this.isBonusball = true;
+        }
+    }
+}
+~~~
+보너스볼을 파라미터 값으로 Lotto클래스에게 넘겨줘서 Lotto 객체가 스스로 판단하고 상태를 변경하면, 여러곳에서 
+해당 메서드를 통해서만 이용하면 되기에 중복된 코드를 피할 수 있을 뿐만아니라 상태변경에 있어서 좀 더 안정적이라고 볼 수 있다. 
+
+
+코드를 짜면서 Getter 사용에 대한 유혹은 현재에도 굉장히 크다. 더 빨리 개발하고 싶은 마음때문에 편의를 위해
+Getter를 여는 순간, Getter를 가져온 쪽에서 Getter 제공하는 객체의 상태값을 변경하는 내 자신을 볼 수가 있다.
+물론, 무조건 Getter를 사용하면 안되는건 아니라고 생각한다. 단순히 객체의 상태값을 읽는 목적으로만 사용할 경우에는 
+Getter가 필요하다. 
+
+[Refference]
+- [마틴파울러-TellDontAsk](https://martinfowler.com/bliki/TellDontAsk.html)
+- CleanCode책 
