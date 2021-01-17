@@ -1,16 +1,8 @@
 /** @jsx jsx */
 import { jsx } from "theme-ui"
-import { Link } from "gatsby"
 import Layout from "./layout"
-import Title from "./title"
 import Listing from "./listing"
-import List from "./list"
-import useMinimalBlogConfig from "../hooks/use-minimal-blog-config"
-import replaceSlashes from "../utils/replaceSlashes"
-// @ts-ignore
-import Hero from "../texts/hero"
-// @ts-ignore
-import Bottom from "../texts/bottom"
+import usePosts from "../hooks/use-post"
 
 type PostsProps = {
   posts: {
@@ -29,14 +21,11 @@ type PostsProps = {
 }
 
 const Homepage = ({ posts }: PostsProps) => {
-  const { basePath, blogPath } = useMinimalBlogConfig()
+  const p = usePosts()
 
   return (
     <Layout>
-    <Title text="최근 게시물">
-      <Link to={replaceSlashes(`/${basePath}/${blogPath}`)}>Read all posts</Link>
-    </Title>
-    <Listing posts={posts} showTags={true} />
+    <Listing posts={p.nodes} showTags={true} />
  
   </Layout>
   )
