@@ -133,12 +133,14 @@ spring의 @Transactional 어노테이션을 사용하여 격리레벨이 소스�
   
   v. ReadCommitted의 Nonrepeatable Read 현상 테스트
   ```java
-public interface FruitRepository  extends JpaRepository<Fruit, Long> {
+  public interface FruitRepository  extends JpaRepository<Fruit, Long> {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     Fruit findFruitById(Long id);
-}
-  ```
+  }
+  ```  
+
   데이터를 조회할 때 격리레벨 READ_COMMITED로 지정하였다.
+
 
   ```java
     @Transactional(readOnly = true)
@@ -237,10 +239,10 @@ Nonrepeatable 현상이 발생하여 조회요청을 하는 쓰레드 갯수와 
        |                      |                       |
        | select price         |                       |
        | from product         |                       |
-       | where name = apple   |  update product       |
+       | where name = banana  |  update product       |
        |  ---- verson1 ----+  |  set price = 2000     |
        |                   |  |  where name = banana  |
-       |  <----- 500 ------+  |  +------------------  | 
+       |  <----- 1000------+  |  +------------------  | 
        |                      |  |                    |
        |                      |  +--commit version2-> | 
        |                      |                       |
