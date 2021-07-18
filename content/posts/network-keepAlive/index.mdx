@@ -111,15 +111,14 @@ sudo nginx -s reload
 ```
 
 총 12번의 localhost로 접속 시 아래와 같은 로그가 출력된다.   
-![로그출력](../network-keepAlive/로그.png)
+![로그출력](../network-keepAlive/img/로그.png)
 
 커넥션 넘버별로 최대 요청수 5회 시 다음 요청에 대해서 새로운 커넥션이 맺어진걸 확인 할 수 있다. 
 
 추가로, 커넥션이 해제되는 응답값을 확인하기 위하여 Jmeter라는 테스트 도구를 통해서 4번째 요청과
 5번째 요청에 대한 응답값을 확인해봤다.
-
-![4번째_요청](../network-keepAlive/4번째_요청.png)
-![5번째_요청](../network-keepAlive/5번째_요청.png)
+![4번째_요청](../network-keepAlive/img/4번째_요청.png)
+![5번째_요청](../network-keepAlive/img/5번째_요청.png)
 
 아직 최대 요청수를 넘어서지 않았기 때문에 4번째 요청에 대한 응답 헤더값은 Connection: keep-alive로 설정되어있고
 최대 요청수의 5번째 요청은 응답 헤더값에 Connection:close 값이 추가되어 후속요청은 새로운 커넥션이 맺어진걸 확인 할 수 있다. 
